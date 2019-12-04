@@ -25,6 +25,9 @@ type Options struct {
 	Retransmission bool
 	RandomDrops    bool
 	Drop1InN       int32
+	Key            string
+	ServerCert     string
+	CA             string
 }
 
 func LoadOptions(data XgressOptionsData) *Options {

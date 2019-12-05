@@ -17,7 +17,7 @@ identity:
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
-  listener:             tls:127.0.0.1:6262
+  listener:             quic:127.0.0.1:6262
 
 # the endpoint that management tools connect to the controller over.
 mgmt:

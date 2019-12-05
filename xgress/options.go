@@ -45,6 +45,18 @@ func LoadOptions(data XgressOptionsData) *Options {
 		if value, found := data["drop1InN"]; found {
 			options.Drop1InN = int32(value.(int))
 		}
+
+		// WSS stuff
+		if value, found := data["key"]; found {
+			options.Key = value.(string)
+		}
+		if value, found := data["server_cert"]; found {
+			options.ServerCert = value.(string)
+		}
+		if value, found := data["ca"]; found {
+			options.CA = value.(string)
+		}
+
 	}
 
 	return options

@@ -31,6 +31,7 @@ enum ContentType {
   RouterLinksType = 1035;
 
   ListenersHeader = 10;
+  DialersHeader = 11;
 }
 
 // SettingTypes are used with the Settings message send arbitrary settings to routers.
@@ -102,6 +103,8 @@ message Dial {
   string routerId = 3;
   string linkProtocol = 4;
   string routerVersion = 5;
+  string group = 6;
+  string localBinding = 7;
 }
 
 message LinkConnected {
@@ -181,10 +184,20 @@ message VerifyLink {
   repeated string fingerprints = 2;
 }
 
+message Dialer {
+  string localBinding = 1;
+  string group = 2;
+}
+
+message Dialers {
+  repeated Dialer dialers = 1;
+}
+
 message Listener {
   string address = 1;
   string protocol = 2;
   repeated string costTags = 3;
+  string group = 4;
 }
 
 message Listeners {

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"strings"
 )
 
 type dialer struct {
@@ -34,20 +35,41 @@ type dialer struct {
 	transportConfig    transport.Configuration
 }
 
+func (self *dialer) GetLocalBinding() string {
+	if "" != self.config.localBinding {
+		return self.config.localBinding
+	} else {
+		return "default"
+	}
+}
+
+func (self *dialer) GetGroup() string {
+	if "" != self.config.linkGroup {
+		return self.config.linkGroup
+	} else {
+		return "default"
+	}
+}
+
 func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 	address, err := transport.ParseAddress(dial.GetAddress())
 	if err != nil {
 		return nil, errors.Wrapf(err, "error parsing link address [%s]", dial.GetAddress())
 	}
 
+	logrus.Debugf("Dial Binding: " + dial.GetLocalBinding())
+	logrus.Debugf("Dial Group: " + dial.GetGroup())
+
 	linkId := self.id.ShallowCloneWithNewToken(dial.GetLinkId())
 	connId := uuid.New().String()
 
+	localBinding := strings.ReplaceAll(dial.GetLocalBinding(), "default", "")
+
 	var xli xlink.Xlink
 	if self.config.split {
-		xli, err = self.dialSplit(linkId, address, connId, dial)
+		xli, err = self.dialSplit(linkId, address, localBinding, connId, dial)
 	} else {
-		xli, err = self.dialSingle(linkId, address, connId, dial)
+		xli, err = self.dialSingle(linkId, address, localBinding, connId, dial)
 	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing outgoing link [l/%s]", linkId.Token)
@@ -61,10 +83,10 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 
 }
 
-func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
+func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, localBinding string, connId string, dial xlink.Dial) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with split payload/ack channels [l/%s]", linkId.Token)
 
-	payloadDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
+	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, localBinding, map[int32][]byte{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderType:          {byte(PayloadChannel)},
@@ -79,6 +101,8 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 			routerId:      dial.GetRouterId(),
 			routerVersion: dial.GetRouterVersion(),
 			linkProtocol:  dial.GetLinkProtocol(),
+			group:         dial.GetGroup(),
+			localBinding:  localBinding,
 		},
 	}
 
@@ -89,7 +113,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 
 	logrus.Debugf("dialing ack channel for [l/%s]", linkId.Token)
 
-	ackDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
+	ackDialer := channel.NewClassicDialerWithBindAddress(linkId, address, localBinding, map[int32][]byte{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderType:          {byte(AckChannel)},
@@ -105,10 +129,10 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	return bindHandler.link, nil
 }
 
-func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
+func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, localBinding string, connId string, dial xlink.Dial) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with single channel [l/%s]", linkId.Token)
 
-	payloadDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
+	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, localBinding, map[int32][]byte{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
@@ -121,6 +145,8 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 			routerId:      dial.GetRouterId(),
 			linkProtocol:  dial.GetLinkProtocol(),
 			routerVersion: dial.GetRouterVersion(),
+			group:         dial.GetGroup(),
+			localBinding:  localBinding,
 		},
 	}
 

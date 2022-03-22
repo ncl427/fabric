@@ -35,7 +35,7 @@ func (network *Network) assemble() {
 				network.linkController.add(missingLink)
 
 				for _, listener := range missingLink.Dst.Listeners {
-					if listener.Protocol() != missingLink.Protocol {
+					if listener.Group() != (*missingLink.Dialer).Group() {
 						continue
 					}
 					dial := &ctrl_pb.Dial{
@@ -43,12 +43,15 @@ func (network *Network) assemble() {
 						Address:      listener.AdvertiseAddress(),
 						RouterId:     missingLink.Dst.Id,
 						LinkProtocol: listener.Protocol(),
+						Group:        (*missingLink.Dialer).Group(),
+						LocalBinding: (*missingLink.Dialer).LocalBinding(),
 					}
 
 					if versionInfo := missingLink.Dst.VersionInfo; versionInfo != nil {
 						dial.RouterVersion = missingLink.Dst.VersionInfo.Version
 					}
 
+					log.Debugf("Sending dial request from %s to %s using group %s", missingLink.Src.Control.Id(), missingLink.Dst.Control.Id(), (*missingLink.Dialer).Group())
 					if err := protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
 						log.WithError(err).Error("unexpected error sending dial")
 					}

@@ -29,6 +29,8 @@ type impl struct {
 	routerId      string
 	routerVersion string
 	linkProtocol  string
+	group         string
+	localBinding  string
 	closeNotified concurrenz.AtomicBoolean
 }
 
@@ -67,6 +69,14 @@ func (self *impl) DestVersion() string {
 
 func (self *impl) LinkProtocol() string {
 	return self.linkProtocol
+}
+
+func (self *impl) LocalBinding() string {
+	return self.localBinding
+}
+
+func (self *impl) Group() string {
+	return self.group
 }
 
 func (self *impl) HandleCloseNotification(f func()) {

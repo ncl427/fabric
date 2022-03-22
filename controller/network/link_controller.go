@@ -17,6 +17,7 @@
 package network
 
 import (
+	"errors"
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/foundation/util/info"
 	"github.com/orcaman/concurrent-map"
@@ -131,6 +132,7 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 	return nil, false
 }
 
+// TODO: Inject dialer smarts here to deal with multiple dialers for same router
 func (linkController *linkController) missingLinks(routers []*Router, pendingTimeout time.Duration) ([]*Link, error) {
 	// When there's a flood of router connects at startup we can see the same link
 	// as missing multiple times as the new link will be marked as PENDING until it's
@@ -143,14 +145,23 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 		for _, dstR := range routers {
 			if srcR != dstR && len(dstR.Listeners) > 0 {
 				for _, listener := range dstR.Listeners {
-					if !linkController.hasLink(srcR, dstR, listener.Protocol(), pendingLimit) {
+					if !linkController.hasLink(srcR, dstR, listener.Group(), pendingLimit) {
+						dialer := linkController.getDialer(srcR, listener.Group())
+
 						id, err := idgen.NewUUIDString()
 						if err != nil {
 							return nil, err
 						}
-						link := newLink(id, listener.Protocol())
+
+						if nil == dialer {
+							return nil, errors.New("No dialer available between " + srcR.GetId() + " and " + dstR.GetId() + " in group " + listener.Group())
+						}
+
+						link := newLink(id, listener.Group())
+
 						link.Src = srcR
 						link.Dst = dstR
+						link.Dialer = dialer
 						missingLinks = append(missingLinks, link)
 					}
 				}
@@ -174,15 +185,24 @@ func (linkController *linkController) clearExpiredPending(pendingTimeout time.Du
 	}
 }
 
-func (linkController *linkController) hasLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
-	return linkController.hasDirectedLink(a, b, linkProtocol, pendingLimit) || linkController.hasDirectedLink(b, a, linkProtocol, pendingLimit)
+func (linkController *linkController) getDialer(srcR *Router, group string) *Dialer {
+	for _, dialer := range srcR.Dialers {
+		if dialer.Group() == group {
+			return &dialer
+		}
+	}
+	return nil
 }
 
-func (linkController *linkController) hasDirectedLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
+func (linkController *linkController) hasLink(a, b *Router, group string, pendingLimit int64) bool {
+	return linkController.hasDirectedLink(a, b, group, pendingLimit) || linkController.hasDirectedLink(b, a, group, pendingLimit)
+}
+
+func (linkController *linkController) hasDirectedLink(a, b *Router, group string, pendingLimit int64) bool {
 	links := a.routerLinks.GetLinks()
 	for _, link := range links {
 		state := link.CurrentState()
-		if link.Src == a && link.Dst == b && state != nil && link.Protocol == linkProtocol {
+		if link.Src == a && link.Dst == b && state != nil && (*link.Dialer).Group() == group {
 			if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
 				return true
 			}

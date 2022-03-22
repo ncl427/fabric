@@ -294,6 +294,11 @@ func (c *UpdatableAddress) Dial(name string, i *identity.TokenId, timeout time.D
 	return c.getWrapped().Dial(name, i, timeout, tcfg)
 }
 
+// DialWithLocalBinding implements transport.Address.DialWithLocalBinding
+func (c *UpdatableAddress) DialWithLocalBinding(name string, localBinding string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
+	return c.getWrapped().DialWithLocalBinding(name, localBinding, i, timeout, tcfg)
+}
+
 // getWrapped loads the current transport.Address
 func (c *UpdatableAddress) getWrapped() transport.Address {
 	return c.wrapped.Load().(transport.Address)

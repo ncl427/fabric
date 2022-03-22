@@ -73,11 +73,22 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 			"routerId":      dial.RouterId,
 			"address":       dial.Address,
 			"linkProtocol":  dial.LinkProtocol,
+			"group":         dial.Group,
+			"binding":       dial.LocalBinding,
 			"routerVersion": dial.RouterVersion,
 		})
 
-	if len(self.dialers) != 1 {
-		log.Errorf("invalid Xlink dialers configuration")
+	log.Info("Dial request received")
+	var d xlink.Dialer = nil
+
+	for _, dialer := range self.dialers {
+		if dial.Group == dialer.GetGroup() && dial.GetLocalBinding() == dialer.GetLocalBinding() {
+			d = dialer
+		}
+	}
+
+	if nil == d {
+		log.Errorf("invalid Xlink dialers configuration. No dialer found for group [%s] with local binding [%s]", dial.GetGroup(), dial.GetLocalBinding())
 		if err := self.sendLinkFault(dial.LinkId); err != nil {
 			log.WithError(err).Error("error sending link fault")
 		}
@@ -95,7 +106,7 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 
 	if lockAcquired {
 		log.Info("dialing link")
-		if link, err := self.dialers[0].Dial(dial); err == nil {
+		if link, err := d.Dial(dial); err == nil {
 			if existingLink, success := self.registry.DialSucceeded(link); success {
 				log.Info("link registered")
 				if err := self.sendLinkMessage(dial.LinkId); err != nil {

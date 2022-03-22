@@ -39,11 +39,11 @@ func (self *linkRegistryImpl) ControlChannel() channel.Channel {
 	return self.ctrlCh
 }
 
-func (self *linkRegistryImpl) GetLink(routerId, linkType string) (xlink.Xlink, bool) {
+func (self *linkRegistryImpl) GetLink(routerId, linkType string, group string, localBinding string) (xlink.Xlink, bool) {
 	self.Lock()
 	defer self.Unlock()
 
-	key := self.getLookupKey(routerId, linkType)
+	key := self.getLookupKey(routerId, linkType, group, localBinding)
 	val, found := self.linkMap[key]
 	if found {
 		return val, true
@@ -99,15 +99,16 @@ func (self *linkRegistryImpl) purgeOldDialLocks() {
 }
 
 func (self *linkRegistryImpl) getDialLookupKey(dial xlink.Dial) string {
-	return self.getLookupKey(dial.GetRouterId(), dial.GetLinkProtocol())
+	return self.getLookupKey(dial.GetRouterId(), dial.GetLinkProtocol(), dial.GetGroup(), dial.GetLocalBinding())
 }
 
 func (self *linkRegistryImpl) getLinkLookupKey(link xlink.Xlink) string {
-	return self.getLookupKey(link.DestinationId(), link.LinkProtocol())
+	logrus.Debugf("Looking up link with type %s group %s and binding %s", link.LinkProtocol(), link.Group(), link.LocalBinding())
+	return self.getLookupKey(link.DestinationId(), link.LinkProtocol(), link.Group(), link.LocalBinding())
 }
 
-func (self *linkRegistryImpl) getLookupKey(routerId, linkType string) string {
-	key := fmt.Sprintf("%v#%v", routerId, linkType)
+func (self *linkRegistryImpl) getLookupKey(routerId, linkType string, group string, localBinding string) string {
+	key := fmt.Sprintf("%v#%v#%v#%v", routerId, linkType, group, localBinding)
 	return key
 }
 
@@ -137,6 +138,8 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	if existing := self.linkMap[key]; existing != nil {
 		log := logrus.WithField("dest", link.DestinationId()).
 			WithField("linkProtocol", link.LinkProtocol()).
+			WithField("group", link.Group()).
+			WithField("localBinding", link.LocalBinding()).
 			WithField("currentLinkId", existing.Id().Token).
 			WithField("newLinkId", link.Id().Token)
 		if existing.Id().Token < link.Id().Token {

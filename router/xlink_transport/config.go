@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"reflect"
 )
 
@@ -67,6 +68,14 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		}
 	}
 
+	if value, found := data["group"]; found {
+		if groupString, ok := value.(string); ok {
+			config.linkGroup = groupString
+		} else {
+			return nil, fmt.Errorf("invalid 'group' in listener config (%s)", reflect.TypeOf(value))
+		}
+	}
+
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			options, err := channel.LoadOptions(submap)
@@ -89,10 +98,11 @@ type listenerConfig struct {
 	advertise    transport.Address
 	linkProtocol string
 	linkCostTags []string
+	linkGroup    string
 	options      *channel.Options
 }
 
-func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
+func loadDialerConfig(data transport.Configuration) (*dialerConfig, error) {
 	config := &dialerConfig{split: true}
 
 	if value, found := data["split"]; found {
@@ -103,8 +113,30 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 		}
 	}
 
+	if value, found := data["bind"]; found {
+		logrus.Debugf("Parsing dialer bind config")
+		if addressString, ok := value.(string); ok {
+			iface, err := transport.ResolveInterface(addressString)
+			if err != nil {
+				return nil, errors.Errorf("invalid 'bind' address in dialet config (%s)", err)
+			}
+			config.localBinding = iface.Name
+			logrus.Debugf("Using local bind address %s", config.localBinding)
+		} else {
+			return nil, fmt.Errorf("invalid 'bind' address in dialer config (%s)", reflect.TypeOf(value))
+		}
+	}
+
+	if value, found := data["group"]; found {
+		if groupString, ok := value.(string); ok {
+			config.linkGroup = groupString
+		} else {
+			return nil, fmt.Errorf("invalid 'group' in dialer config (%s)", reflect.TypeOf(value))
+		}
+	}
+
 	if value, found := data["options"]; found {
-		if submap, ok := value.(map[interface{}]interface{}); ok {
+		if submap, ok := value.(transport.Configuration); ok {
 			options, err := channel.LoadOptions(submap)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to parse link dialer options")
@@ -119,6 +151,8 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 }
 
 type dialerConfig struct {
-	split   bool
-	options *channel.Options
+	split        bool
+	localBinding string
+	linkGroup    string
+	options      *channel.Options
 }

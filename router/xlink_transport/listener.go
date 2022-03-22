@@ -66,6 +66,10 @@ func (self *listener) GetLinkCostTags() []string {
 	return self.config.linkCostTags
 }
 
+func (self *listener) GetGroup() string {
+	return self.config.linkGroup
+}
+
 func (self *listener) Close() error {
 	return self.listener.Close()
 }

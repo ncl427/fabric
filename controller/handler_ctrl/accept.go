@@ -69,6 +69,7 @@ func (self *CtrlAccepter) Run() {
 	}
 }
 
+// TODO: Tod - This is the controller side of the world
 func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 	binding.GetChannel().SetLogicalName(binding.GetChannel().Id().Token)
 	ch := binding.GetChannel()
@@ -94,20 +95,39 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 					log.WithError(err).Error("unable to unmarshall listeners value")
 				} else {
 					for _, listener := range listeners.Listeners {
-						log.WithField("address", listener.GetAddress()).WithField("protocol", listener.GetProtocol()).WithField("costTags", listener.GetCostTags()).Debug("router listener")
-						r.AddLinkListener(listener.GetAddress(), listener.GetProtocol(), listener.GetCostTags())
+						var group = listener.GetGroup()
+						if "" == group {
+							group = "default"
+						}
+						log.WithField("address", listener.GetAddress()).WithField("type", listener.GetProtocol()).WithField("group", group).WithField("costTags", listener.GetCostTags()).Debug("router listener")
+						r.AddLinkListener(listener.GetAddress(), listener.GetProtocol(), listener.GetGroup(), listener.GetCostTags())
 					}
 				}
 			} else if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
 				log.Debug("router reported listener using advertisement header")
 				addr := string(listenerValue)
 				linkProtocol := "tls"
+
 				if addr, _ := transport.ParseAddress(addr); addr != nil {
 					linkProtocol = addr.Type()
 				}
-				r.AddLinkListener(addr, linkProtocol, nil)
+				r.AddLinkListener(addr, linkProtocol, "default", nil)
 			} else {
 				log.Warn("no advertised listeners")
+			}
+
+			r.Dialers = nil
+			if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_DialersHeader)]; found {
+				log.Debug("router reported dialers using dialers header")
+				dialers := &ctrl_pb.Dialers{}
+				if err := proto.Unmarshal(val, dialers); err != nil {
+					log.WithError(err).Error("unable to unmarshall dialers value")
+				} else {
+					for _, dialer := range dialers.Dialers {
+						log.WithField("localBinding", dialer.GetLocalBinding()).WithField("group", dialer.GetGroup()).Debug("router dialer")
+						r.AddLinkDialer(dialer.GetLocalBinding(), dialer.GetGroup())
+					}
+				}
 			}
 		} else {
 			log.Warn("no attributes provided")

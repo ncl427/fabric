@@ -319,13 +319,15 @@ func (self *Router) registerPlugins() error {
 func (self *Router) startXlinkDialers() {
 	for _, lmap := range self.config.Link.Dialers {
 		binding := lmap["binding"].(string)
+		logrus.Infof("loading Xlink dialer with map [%+v]", lmap)
 		if factory, found := self.xlinkFactories[binding]; found {
+
 			dialer, err := factory.CreateDialer(self.config.Id, self.forwarder, lmap)
 			if err != nil {
 				logrus.Fatalf("error creating Xlink dialer (%v)", err)
 			}
 			self.xlinkDialers = append(self.xlinkDialers, dialer)
-			logrus.Infof("started Xlink dialer with binding [%s]", binding)
+			logrus.Infof("started Xlink dialer with binding [%s] using interface [%s]", binding, dialer.GetLocalBinding())
 		}
 	}
 }
@@ -378,6 +380,7 @@ func (self *Router) startXgressListeners() {
 	}
 }
 
+// TODO: Tod note - router side of channel setup
 func (self *Router) startControlPlane() error {
 	attributes := map[int32][]byte{}
 
@@ -399,6 +402,7 @@ func (self *Router) startControlPlane() error {
 			Address:  listener.GetAdvertisement(),
 			Protocol: listener.GetLinkProtocol(),
 			CostTags: listener.GetLinkCostTags(),
+			Group:    listener.GetGroup(),
 		})
 	}
 
@@ -407,6 +411,23 @@ func (self *Router) startControlPlane() error {
 			return errors.Wrap(err, "unable to marshal Listeners")
 		} else {
 			attributes[int32(ctrl_pb.ContentType_ListenersHeader)] = buf
+		}
+	}
+
+	dialers := &ctrl_pb.Dialers{}
+
+	for _, dialer := range self.xlinkDialers {
+		dialers.Dialers = append(dialers.Dialers, &ctrl_pb.Dialer{
+			LocalBinding: dialer.GetLocalBinding(),
+			Group:        dialer.GetGroup(),
+		})
+	}
+
+	if len(dialers.Dialers) > 0 {
+		if buf, err := proto.Marshal(dialers); err != nil {
+			return errors.Wrap(err, "unable to marshal Dialers")
+		} else {
+			attributes[int32(ctrl_pb.ContentType_DialersHeader)] = buf
 		}
 	}
 

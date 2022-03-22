@@ -129,6 +129,7 @@ func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.R
 }
 
 func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch channel.Channel, route *ctrl_pb.Route, ctx logcontext.Context) {
+	// TODO: Tod Note - Egress connect here
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("context", ch.Label()).
 		WithField("circuitId", route.CircuitId).

@@ -28,7 +28,7 @@ type Registry interface {
 	xctrl.Xctrl
 
 	// GetLink returns the link to the given router, of the given type, if one exists
-	GetLink(routerId, linkType string) (Xlink, bool)
+	GetLink(routerId, linkType string, group string, localBinding string) (Xlink, bool)
 	// GetLinkById returns the link for the given id, if it exists
 	GetLinkById(linkId string) (Xlink, bool)
 	// GetDialLock tries to acquire a dial lock for the given dial attempt
@@ -58,6 +58,7 @@ type Listener interface {
 	GetAdvertisement() string
 	GetLinkProtocol() string
 	GetLinkCostTags() []string
+	GetGroup() string
 	Close() error
 }
 
@@ -72,10 +73,14 @@ type Dial interface {
 	GetAddress() string
 	GetLinkProtocol() string
 	GetRouterVersion() string
+	GetLocalBinding() string
+	GetGroup() string
 }
 
 type Dialer interface {
 	Dial(dial Dial) (Xlink, error)
+	GetLocalBinding() string
+	GetGroup() string
 }
 
 type Xlink interface {
@@ -88,6 +93,8 @@ type Xlink interface {
 	DestinationId() string
 	DestVersion() string
 	LinkProtocol() string
+	LocalBinding() string
+	Group() string
 	HandleCloseNotification(f func())
 }
 

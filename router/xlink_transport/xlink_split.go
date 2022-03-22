@@ -31,6 +31,8 @@ type splitImpl struct {
 	routerId      string
 	routerVersion string
 	linkProtocol  string
+	group         string
+	localBinding  string
 	closeNotified concurrenz.AtomicBoolean
 }
 
@@ -83,6 +85,14 @@ func (self *splitImpl) DestVersion() string {
 
 func (self *splitImpl) LinkProtocol() string {
 	return self.linkProtocol
+}
+
+func (self *splitImpl) LocalBinding() string {
+	return self.localBinding
+}
+
+func (self *splitImpl) Group() string {
+	return self.group
 }
 
 func (self *splitImpl) HandleCloseNotification(f func()) {

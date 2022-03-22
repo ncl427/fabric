@@ -28,6 +28,7 @@ type Link struct {
 	Src        *Router
 	Dst        *Router
 	Protocol   string
+	Dialer     *Dialer
 	state      []*LinkState
 	down       bool
 	StaticCost int32

@@ -36,6 +36,12 @@ import (
 type Listener interface {
 	AdvertiseAddress() string
 	Protocol() string
+	Group() string
+}
+
+type Dialer interface {
+	LocalBinding() string
+	Group() string
 }
 
 type Router struct {
@@ -43,6 +49,7 @@ type Router struct {
 	Name        string
 	Fingerprint *string
 	Listeners   []Listener
+	Dialers     []Dialer
 	Control     channel.Channel
 	Connected   concurrenz.AtomicBoolean
 	VersionInfo *common.VersionInfo
@@ -74,11 +81,19 @@ func (entity *Router) toBolt() boltz.Entity {
 	}
 }
 
-func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string) {
+func (entity *Router) AddLinkListener(addr, linkProtocol string, group string, linkCostTags []string) {
 	entity.Listeners = append(entity.Listeners, linkListener{
 		addr:         addr,
 		linkProtocol: linkProtocol,
 		linkCostTags: linkCostTags,
+		group:        group,
+	})
+}
+
+func (entity *Router) AddLinkDialer(localBinding, group string) {
+	entity.Dialers = append(entity.Dialers, &linkDialer{
+		localBinding: localBinding,
+		group:        group,
 	})
 }
 
@@ -384,6 +399,7 @@ type linkListener struct {
 	addr         string
 	linkProtocol string
 	linkCostTags []string
+	group        string
 }
 
 func (self linkListener) AdvertiseAddress() string {
@@ -392,4 +408,21 @@ func (self linkListener) AdvertiseAddress() string {
 
 func (self linkListener) Protocol() string {
 	return self.linkProtocol
+}
+
+func (self linkListener) Group() string {
+	return self.group
+}
+
+type linkDialer struct {
+	localBinding string
+	group        string
+}
+
+func (self linkDialer) Group() string {
+	return self.group
+}
+
+func (self linkDialer) LocalBinding() string {
+	return self.localBinding
 }

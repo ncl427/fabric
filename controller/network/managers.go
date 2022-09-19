@@ -172,6 +172,7 @@ func NewManagers(network *Network, dispatcher command.Dispatcher, db boltz.Db, s
 		//version := versions.MustParseSemVer(network.VersionProvider.Version())
 		result.Dispatcher = &command.LocalDispatcher{
 			EncodeDecodeCommands: false, //change later to see why
+			//EncodeDecodeCommands: devVersion.Equals(version),
 		}
 	}
 	result.Command.registerGenericCommands()

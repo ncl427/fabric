@@ -17,6 +17,7 @@
 package command
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/sirupsen/logrus"
@@ -71,6 +72,8 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 		if err != nil {
 			return err
 		}
+		fmt.Println("I REACH HERE?-----------------------------", cmd)
+
 		return cmd.Apply()
 	}
 

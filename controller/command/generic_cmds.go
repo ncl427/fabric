@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/pb/cmd_pb"
@@ -26,6 +27,8 @@ type EntityMarshaller[T any] interface {
 // EntityCreator instances can apply a create entity command to create entities of a given type
 type EntityCreator[T models.Entity] interface {
 	EntityMarshaller[T]
+
+	//fmt.Println("FABRIC ENTITY??", cmd *CreateEntityCommand[T])
 
 	// ApplyCreate creates the entity described by the given command
 	ApplyCreate(cmd *CreateEntityCommand[T]) error
@@ -62,6 +65,7 @@ type CreateEntityCommand[T models.Entity] struct {
 }
 
 func (self *CreateEntityCommand[T]) Apply() error {
+	fmt.Println("FABRIC APPLY COMMAND?---------------------------", self.Entity)
 	return self.Creator.ApplyCreate(self)
 }
 
@@ -71,6 +75,7 @@ func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "error mashalling entity of type %T (%v)", self.Entity, entityType)
 	}
+	fmt.Println("FABRIC ENCODE COMMAND?---------------------------", self.Entity)
 	return cmd_pb.EncodeProtobuf(&cmd_pb.CreateEntityCommand{
 		EntityType: entityType,
 		EntityData: encodedEntity,
